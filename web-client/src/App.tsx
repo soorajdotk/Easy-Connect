@@ -1,10 +1,27 @@
 import { useState } from 'react';
 import { MousePointer, Keyboard, QrCode, Wifi } from 'lucide-react';
+import { QRScanner } from './components/QRScanner';
+import type { PairingInfo } from 'shared/src/types';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'touchpad' | 'keyboard'>('touchpad');
   const [connectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [isScanning, setIsScanning] = useState(false);
+
+  const handleScan = (data: string) => {
+    try {
+      const info: PairingInfo = JSON.parse(data);
+      if (info.wsUrl && info.deviceId && info.pairToken) {
+        localStorage.setItem('pairing_info', data);
+        setIsScanning(false);
+        alert('Pairing successful! Reconnecting...');
+      } else {
+        alert('Invalid QR code format.');
+      }
+    } catch (err) {
+      alert('Failed to parse pairing QR code.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#080d1a] text-slate-100 flex flex-col items-center justify-between p-4 selection:bg-indigo-500 selection:text-white">
@@ -64,17 +81,8 @@ function App() {
           </div>
         ) : isScanning ? (
           <div className="glass-card rounded-3xl p-6 w-full max-w-sm flex flex-col items-center gap-4 shadow-2xl relative overflow-hidden">
-            <h2 className="text-md font-bold">Scanning pairing QR...</h2>
-            <div className="w-full aspect-square max-w-[280px] bg-black/40 rounded-2xl border-2 border-dashed border-slate-700 flex items-center justify-center relative">
-              <span className="text-xs text-slate-500">Camera Feed Placeholder</span>
-              <div className="absolute inset-0 border-2 border-indigo-500 rounded-2xl animate-pulse pointer-events-none" />
-            </div>
-            <button
-              onClick={() => setIsScanning(false)}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all"
-            >
-              Cancel
-            </button>
+            <h2 className="text-md font-bold mb-2">Scanning pairing QR...</h2>
+            <QRScanner onScan={handleScan} onClose={() => setIsScanning(false)} />
           </div>
         ) : (
           <div className="flex-1 w-full flex flex-col gap-4">
