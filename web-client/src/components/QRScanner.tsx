@@ -19,12 +19,14 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
     const qrScanner = new QrScanner(
       video,
       (result) => {
-        onScan(result.data);
+        const rawData = typeof result === 'object' ? (result as any).data : result;
+        onScan(rawData);
       },
       {
         preferredCamera: 'environment',
         highlightScanRegion: true,
         highlightCodeOutline: true,
+        returnDetailedScanResult: true,
       }
     );
 
