@@ -1,25 +1,33 @@
 import { useState } from 'react';
-import { MousePointer, Keyboard, QrCode, Wifi } from 'lucide-react';
+import { MousePointer, Keyboard, QrCode, Wifi, LogOut } from 'lucide-react';
 import { QRScanner } from './components/QRScanner';
-import type { PairingInfo } from 'shared/src/types';
+import { useRemoteConnection } from './hooks/useRemoteConnection';
+import type { PairingInfo } from 'shared';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'touchpad' | 'keyboard'>('touchpad');
-  const [connectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [isScanning, setIsScanning] = useState(false);
+  const { connectionStatus, connect, disconnect } = useRemoteConnection();
 
   const handleScan = (data: string) => {
     try {
       const info: PairingInfo = JSON.parse(data);
       if (info.wsUrl && info.deviceId && info.pairToken) {
-        localStorage.setItem('pairing_info', data);
+        connect(info);
         setIsScanning(false);
-        alert('Pairing successful! Reconnecting...');
       } else {
         alert('Invalid QR code format.');
       }
     } catch (err) {
       alert('Failed to parse pairing QR code.');
+    }
+  };
+
+  const handleForget = () => {
+    if (confirm('Are you sure you want to forget this paired computer?')) {
+      localStorage.removeItem('pairing_info');
+      disconnect();
+      window.location.reload(); // Refresh to clean state
     }
   };
 
@@ -48,15 +56,26 @@ function App() {
           </div>
         </div>
 
-        {connectionStatus === 'disconnected' && (
-          <button
-            onClick={() => setIsScanning(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/20 active:scale-95"
-          >
-            <QrCode className="w-4 h-4" />
-            Scan QR
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {connectionStatus !== 'disconnected' && (
+            <button
+              onClick={handleForget}
+              title="Forget paired device"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-95"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+          {connectionStatus === 'disconnected' && (
+            <button
+              onClick={() => setIsScanning(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/20 active:scale-95"
+            >
+              <QrCode className="w-4 h-4" />
+              Scan QR
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Control Console */}
