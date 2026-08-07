@@ -12,7 +12,7 @@ const POINT = koffi.struct('POINT', {
 
 // Declare user32 functions
 const SetCursorPos = user32.func('bool __stdcall SetCursorPos(int x, int y)');
-const GetCursorPos = user32.func('bool __stdcall GetCursorPos(POINT *lpPoint)');
+const GetCursorPos = user32.func('bool __stdcall GetCursorPos(_Out_ POINT *lpPoint)');
 const mouse_event = user32.func('void __stdcall mouse_event(uint32_t dwFlags, uint32_t dx, uint32_t dy, uint32_t dwData, uintptr_t dwExtraInfo)');
 const keybd_event = user32.func('void __stdcall keybd_event(uint8_t bVk, uint8_t bScan, uint32_t dwFlags, uintptr_t dwExtraInfo)');
 const VkKeyScanA = user32.func('int16_t __stdcall VkKeyScanA(uint8_t ch)');
