@@ -109,7 +109,13 @@ function App() {
             {/* View Port for Touchpad/Keyboard */}
             <div className="flex-1 glass-card rounded-3xl p-4 flex flex-col items-center justify-center min-h-[300px]">
               {activeTab === 'touchpad' ? (
-                <Touchpad onMouseMove={(dx, dy) => sendMessage({ type: 'mouse_move', dx, dy })} />
+                <Touchpad
+                  onMouseMove={(dx, dy) => sendMessage({ type: 'mouse_move', dx, dy })}
+                  onLeftClick={() => sendMessage({ type: 'left_click' })}
+                  onRightClick={() => sendMessage({ type: 'right_click' })}
+                  onDoubleClick={() => sendMessage({ type: 'double_click' })}
+                  onScroll={(dy) => sendMessage({ type: 'mouse_scroll', dy })}
+                />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                   <span className="text-sm font-semibold text-slate-400">Virtual Keyboard Placeholder</span>
