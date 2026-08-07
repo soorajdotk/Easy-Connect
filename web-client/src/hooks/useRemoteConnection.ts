@@ -5,6 +5,11 @@ export function useRemoteConnection() {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [pairingInfo, setPairingInfo] = useState<PairingInfo | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  
+  // Reconnection variables
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectDelayRef = useRef<number>(1000); // Start at 1s
+  const intentionalDisconnectRef = useRef<boolean>(false);
 
   // Load pairing details on mount
   useEffect(() => {
@@ -20,6 +25,11 @@ export function useRemoteConnection() {
   }, []);
 
   const disconnect = useCallback(() => {
+    intentionalDisconnectRef.current = true;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -28,11 +38,18 @@ export function useRemoteConnection() {
   }, []);
 
   const connect = useCallback((info: PairingInfo) => {
-    // Disconnect existing if any
+    // Clear any pending reconnect attempts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // Terminate existing connection
     if (wsRef.current) {
       wsRef.current.close();
     }
 
+    intentionalDisconnectRef.current = false;
     setConnectionStatus('connecting');
     setPairingInfo(info);
     localStorage.setItem('pairing_info', JSON.stringify(info));
@@ -46,6 +63,7 @@ export function useRemoteConnection() {
       ws.onopen = () => {
         if (wsRef.current === ws) {
           setConnectionStatus('connected');
+          reconnectDelayRef.current = 1000; // Reset backoff delay on successful connection
         }
       };
 
@@ -53,15 +71,23 @@ export function useRemoteConnection() {
         if (wsRef.current === ws) {
           setConnectionStatus('disconnected');
           wsRef.current = null;
+
+          // Attempt reconnection if it wasn't an intentional disconnect
+          if (!intentionalDisconnectRef.current) {
+            console.log(`Connection lost. Attempting reconnect in ${reconnectDelayRef.current}ms...`);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              connect(info);
+            }, reconnectDelayRef.current);
+
+            // Double the backoff delay for the next attempt, capping at 16s
+            reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, 16000);
+          }
         }
       };
 
       ws.onerror = (err) => {
         console.error('WebSocket connection error:', err);
-        if (wsRef.current === ws) {
-          setConnectionStatus('disconnected');
-          wsRef.current = null;
-        }
+        // let onclose handle the reconnect logic
       };
     } catch (err) {
       console.error('Failed to create WebSocket:', err);
@@ -77,13 +103,19 @@ export function useRemoteConnection() {
 
   // Auto-connect if pairing info exists on mount
   useEffect(() => {
-    if (pairingInfo && connectionStatus === 'disconnected' && !wsRef.current) {
+    if (pairingInfo && connectionStatus === 'disconnected' && !wsRef.current && !intentionalDisconnectRef.current) {
       connect(pairingInfo);
     }
-    return () => {
-      // Don't close on every render, but clean up on unmount
-    };
   }, [pairingInfo, connect, connectionStatus]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     connectionStatus,
