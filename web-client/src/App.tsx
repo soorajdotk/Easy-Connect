@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MousePointer, Keyboard, QrCode, Wifi, LogOut } from 'lucide-react';
 import { QRScanner } from './components/QRScanner';
 import { Touchpad } from './components/Touchpad';
+import { VirtualKeyboard } from './components/VirtualKeyboard';
 import { useRemoteConnection } from './hooks/useRemoteConnection';
 import type { PairingInfo } from 'shared';
 
@@ -117,9 +118,10 @@ function App() {
                   onScroll={(dy) => sendMessage({ type: 'mouse_scroll', dy })}
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                  <span className="text-sm font-semibold text-slate-400">Virtual Keyboard Placeholder</span>
-                </div>
+                <VirtualKeyboard
+                  onKeyPress={(key) => sendMessage({ type: 'key_press', key })}
+                  onSpecialKey={(key) => sendMessage({ type: 'special_key', key })}
+                />
               )}
             </div>
 
