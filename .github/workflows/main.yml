@@ -10,17 +10,9 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: web-client
 
     steps:
       - uses: actions/checkout@v4
@@ -28,10 +20,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - run: npm install
+      # Install ALL workspace dependencies
+      - name: Install dependencies
+        run: npm install
 
-      - run: npm run build
+      # Build shared first (if it has a build script)
+      - name: Build shared
+        run: npm run build --workspace=shared
+
+      # Build React app
+      - name: Build web client
+        run: npm run build --workspace=web-client
 
       - uses: actions/configure-pages@v5
 
@@ -43,6 +44,10 @@ jobs:
     needs: build
 
     runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
 
     environment:
       name: github-pages
