@@ -1,9 +1,16 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron';
 import * as path from 'path';
+import * as QRCode from 'qrcode';
+import { RemoteServer } from './server';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let remoteServer: RemoteServer | null = null;
+
+// Keep track of the current state to send to window when it loads
+let currentStatus: 'Disconnected' | 'Connected' | 'Waiting' = 'Disconnected';
+let currentQrDataUrl: string = '';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,6 +26,13 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (currentQrDataUrl) {
+      mainWindow?.webContents.send('update-pairing', currentQrDataUrl);
+    }
+    mainWindow?.webContents.send('update-status', currentStatus === 'Waiting' ? 'Waiting for connection' : currentStatus);
+  });
+
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -27,15 +41,15 @@ function createWindow() {
   });
 }
 
-function createTray() {
-  const iconPath = path.join(__dirname, '..', 'public', 'icon.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (icon.isEmpty()) {
-    // Fallback to empty nativeImage if icon path is invalid
-    icon = nativeImage.createEmpty();
-  }
+function updateTrayMenu() {
+  if (!tray) return;
 
-  tray = new Tray(icon);
+  const statusLabel = currentStatus === 'Connected' 
+    ? 'Status: Connected' 
+    : currentStatus === 'Waiting' 
+      ? 'Status: Waiting for Client' 
+      : 'Status: Disconnected';
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show Remote Status',
@@ -45,7 +59,7 @@ function createTray() {
     },
     { type: 'separator' },
     {
-      label: 'Status: Disconnected',
+      label: statusLabel,
       enabled: false,
       id: 'conn-status'
     },
@@ -59,8 +73,19 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('Universal Remote Agent');
   tray.setContextMenu(contextMenu);
+}
+
+function createTray() {
+  const iconPath = path.join(__dirname, '..', 'public', 'icon.png');
+  let icon = nativeImage.createFromPath(iconPath);
+  if (icon.isEmpty()) {
+    icon = nativeImage.createEmpty();
+  }
+
+  tray = new Tray(icon);
+  tray.setToolTip('Universal Remote Agent');
+  updateTrayMenu();
 
   tray.on('double-click', () => {
     mainWindow?.show();
@@ -70,6 +95,34 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+
+  // Initialize Remote WebSocket Server on port 8080
+  remoteServer = new RemoteServer({
+    port: 8080,
+    onStatusChange: (status) => {
+      currentStatus = status;
+      updateTrayMenu();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const displayStatus = status === 'Waiting' ? 'Waiting for connection' : status;
+        mainWindow.webContents.send('update-status', displayStatus);
+      }
+    },
+    onPairingInfoReady: (pairingPayload) => {
+      // Generate QR Code data URL
+      QRCode.toDataURL(pairingPayload, (err, url) => {
+        if (err) {
+          console.error('Failed to generate QR code:', err);
+          return;
+        }
+        currentQrDataUrl = url;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-pairing', url);
+        }
+      });
+    }
+  });
+
+  remoteServer.start();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
