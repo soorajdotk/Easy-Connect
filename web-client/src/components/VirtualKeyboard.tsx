@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { SpecialKey } from 'shared';
-import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, CornerDownLeft, Delete, Key } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, ArrowRight, CornerDownLeft, Delete, Key, Mic } from 'lucide-react';
 
 interface VirtualKeyboardProps {
   onKeyPress: (key: string) => void;
@@ -11,7 +11,64 @@ export function VirtualKeyboard({ onKeyPress, onSpecialKey }: VirtualKeyboardPro
   const [ctrlActive, setCtrlActive] = useState(false);
   const [altActive, setAltActive] = useState(false);
   const [shiftActive, setShiftActive] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser or requires a secure context (HTTPS).');
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          // Send speech input character by character
+          for (let i = 0; i < transcript.length; i++) {
+            onKeyPress(transcript.charAt(i));
+          }
+          // Add a trailing space for naturally continuing typing
+          onKeyPress(' ');
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -50,19 +107,35 @@ export function VirtualKeyboard({ onKeyPress, onSpecialKey }: VirtualKeyboardPro
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Native Keyboard Trigger Box */}
-      <div className="relative w-full">
-        <input
-          ref={inputRef}
-          type="text"
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Tap here to open keyboard & type..."
-          className="w-full py-4 px-4 pr-12 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all"
-        />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
-          <Key className="w-4 h-4" />
+      {/* Native Keyboard & Mic Container */}
+      <div className="flex gap-2 w-full">
+        {/* Native Keyboard Trigger Box */}
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Tap here to open keyboard & type..."
+            className="w-full py-4 px-4 pr-12 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+            <Key className="w-4 h-4" />
+          </div>
         </div>
+
+        {/* Microphone / Speech Recognition Button */}
+        <button
+          onClick={toggleSpeechRecognition}
+          className={`px-4 rounded-xl flex items-center justify-center border transition-all ${
+            isListening
+              ? 'bg-rose-600 border-rose-500 text-white animate-pulse shadow-md shadow-rose-600/20'
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+          }`}
+          title="Voice Typing (Speech to Text)"
+        >
+          <Mic className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Modifier Indicators & Clear */}
