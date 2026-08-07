@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { MousePointer, Keyboard, QrCode, Wifi, LogOut } from 'lucide-react';
 import { QRScanner } from './components/QRScanner';
+import { Touchpad } from './components/Touchpad';
 import { useRemoteConnection } from './hooks/useRemoteConnection';
 import type { PairingInfo } from 'shared';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'touchpad' | 'keyboard'>('touchpad');
   const [isScanning, setIsScanning] = useState(false);
-  const { connectionStatus, connect, disconnect } = useRemoteConnection();
+  const { connectionStatus, connect, disconnect, sendMessage } = useRemoteConnection();
 
   const handleScan = (data: string) => {
     try {
@@ -27,7 +28,7 @@ function App() {
     if (confirm('Are you sure you want to forget this paired computer?')) {
       localStorage.removeItem('pairing_info');
       disconnect();
-      window.location.reload(); // Refresh to clean state
+      window.location.reload();
     }
   };
 
@@ -108,9 +109,7 @@ function App() {
             {/* View Port for Touchpad/Keyboard */}
             <div className="flex-1 glass-card rounded-3xl p-4 flex flex-col items-center justify-center min-h-[300px]">
               {activeTab === 'touchpad' ? (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                  <span className="text-sm font-semibold text-slate-400">Touchpad Panel Placeholder</span>
-                </div>
+                <Touchpad onMouseMove={(dx, dy) => sendMessage({ type: 'mouse_move', dx, dy })} />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                   <span className="text-sm font-semibold text-slate-400">Virtual Keyboard Placeholder</span>
