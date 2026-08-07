@@ -9,6 +9,8 @@ import type { PairingInfo } from 'shared';
 function App() {
   const [activeTab, setActiveTab] = useState<'touchpad' | 'keyboard'>('touchpad');
   const [isScanning, setIsScanning] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualData, setManualData] = useState('');
   const { connectionStatus, connect, disconnect, sendMessage } = useRemoteConnection();
 
   const handleScan = (data: string) => {
@@ -22,6 +24,21 @@ function App() {
       }
     } catch (err) {
       alert('Failed to parse pairing QR code.');
+    }
+  };
+
+  const handleManualConnect = () => {
+    try {
+      const info: PairingInfo = JSON.parse(manualData.trim());
+      if (info.wsUrl && info.deviceId && info.pairToken) {
+        connect(info);
+        setShowManual(false);
+        setManualData('');
+      } else {
+        alert('Invalid pairing code format.');
+      }
+    } catch (err) {
+      alert('Failed to parse pairing code JSON.');
     }
   };
 
@@ -87,18 +104,61 @@ function App() {
             <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
               <QrCode className="w-8 h-8" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold">Pair with Computer</h2>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Scan the QR code displayed on your computer's tray agent to establish a direct local connection.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsScanning(true)}
-              className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98]"
-            >
-              Scan Pairing QR Code
-            </button>
+            {!showManual ? (
+              <>
+                <div>
+                  <h2 className="text-lg font-bold">Pair with Computer</h2>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Scan the QR code displayed on your computer's tray agent to establish a direct local connection.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsScanning(true)}
+                  className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98]"
+                >
+                  Scan Pairing QR Code
+                </button>
+                <button
+                  onClick={() => setShowManual(true)}
+                  className="text-xs text-slate-400 hover:text-slate-300 underline mt-1 transition-colors active:scale-95"
+                >
+                  Enter pairing code manually
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-full text-left">
+                  <h2 className="text-lg font-bold text-center">Manual Connection</h2>
+                  <p className="text-xs text-slate-400 mt-2 text-center leading-relaxed">
+                    Paste the manual pairing JSON string from the desktop status window below:
+                  </p>
+                  <textarea
+                    value={manualData}
+                    onChange={(e) => setManualData(e.target.value)}
+                    placeholder='{"wsUrl": "ws://...", "deviceId": "...", "pairToken": "..."}'
+                    className="w-full mt-4 h-24 p-3 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-200 placeholder-slate-600 text-xs font-mono focus:outline-none focus:border-indigo-500/50 transition-all resize-none"
+                  />
+                </div>
+                <div className="w-full flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowManual(false);
+                      setManualData('');
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all active:scale-[0.98]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleManualConnect}
+                    disabled={!manualData.trim()}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800/40 disabled:text-slate-500 text-white transition-all shadow-md active:scale-[0.98]"
+                  >
+                    Connect
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : isScanning ? (
           <div className="glass-card rounded-3xl p-6 w-full max-w-sm flex flex-col items-center gap-4 shadow-2xl relative overflow-hidden">

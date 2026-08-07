@@ -11,6 +11,7 @@ let remoteServer: RemoteServer | null = null;
 // Keep track of the current state to send to window when it loads
 let currentStatus: 'Disconnected' | 'Connected' | 'Waiting' = 'Disconnected';
 let currentQrDataUrl: string = '';
+let currentRawPayload: string = '';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,11 +25,11 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'src', 'index.html'));
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (currentQrDataUrl) {
-      mainWindow?.webContents.send('update-pairing', currentQrDataUrl);
+      mainWindow?.webContents.send('update-pairing', currentQrDataUrl, currentRawPayload);
     }
     mainWindow?.webContents.send('update-status', currentStatus === 'Waiting' ? 'Waiting for connection' : currentStatus);
   });
@@ -108,6 +109,7 @@ app.whenReady().then(() => {
       }
     },
     onPairingInfoReady: (pairingPayload) => {
+      currentRawPayload = pairingPayload;
       // Generate QR Code data URL
       QRCode.toDataURL(pairingPayload, (err, url) => {
         if (err) {
@@ -116,7 +118,7 @@ app.whenReady().then(() => {
         }
         currentQrDataUrl = url;
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update-pairing', url);
+          mainWindow.webContents.send('update-pairing', url, pairingPayload);
         }
       });
     }
