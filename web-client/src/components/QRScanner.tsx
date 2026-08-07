@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import QrScanner from 'qr-scanner';
 
+QrScanner.WORKER_PATH = '/qr-scanner-worker.min.js';
+
 interface QRScannerProps {
   onScan: (data: string) => void;
   onClose: () => void;
