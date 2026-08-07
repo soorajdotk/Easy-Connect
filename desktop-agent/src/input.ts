@@ -6,8 +6,8 @@ const user32 = koffi.load('user32.dll');
 
 // Define POINT struct for GetCursorPos
 const POINT = koffi.struct('POINT', {
-  x: 'long',
-  y: 'long'
+  x: 'int32_t',
+  y: 'int32_t'
 });
 
 // Declare user32 functions
@@ -47,7 +47,10 @@ let isShiftPressed = false;
 export function moveMouseRelative(dx: number, dy: number): void {
   const pt = { x: 0, y: 0 };
   if (GetCursorPos(pt)) {
+    console.log(`Current pos: (${pt.x}, ${pt.y}), moving by: (${dx}, ${dy}) -> target: (${pt.x + dx}, ${pt.y + dy})`);
     SetCursorPos(pt.x + dx, pt.y + dy);
+  } else {
+    console.error('GetCursorPos failed');
   }
 }
 
