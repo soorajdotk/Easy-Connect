@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
 interface TouchpadProps {
   onMouseMove: (dx: number, dy: number) => void;
@@ -23,6 +23,10 @@ export function Touchpad({
   const pointerDownPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastTapTime = useRef<number>(0);
 
+  // Latency & Throttling optimization
+  const accumulatedMove = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+  const throttleTimer = useRef<number | null>(null);
+
   const handleTouchpadDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     const clientX = e.clientX;
@@ -40,8 +44,24 @@ export function Touchpad({
     const dy = Math.round(e.clientY - lastPos.current.y);
 
     if (dx !== 0 || dy !== 0) {
-      onMouseMove(dx, dy);
+      // Accumulate the relative motion
+      accumulatedMove.current.dx += dx;
+      accumulatedMove.current.dy += dy;
+      
+      // Update local position
       lastPos.current = { x: e.clientX, y: e.clientY };
+
+      // Throttle transmissions to ~60fps (16ms)
+      if (throttleTimer.current === null) {
+        throttleTimer.current = window.setTimeout(() => {
+          if (accumulatedMove.current.dx !== 0 || accumulatedMove.current.dy !== 0) {
+            onMouseMove(accumulatedMove.current.dx, accumulatedMove.current.dy);
+            // Reset accumulator
+            accumulatedMove.current = { dx: 0, dy: 0 };
+          }
+          throttleTimer.current = null;
+        }, 16);
+      }
     }
   };
 
@@ -61,11 +81,9 @@ export function Touchpad({
       const timeSinceLastTap = now - lastTapTime.current;
 
       if (timeSinceLastTap < 300) {
-        // Double tap
         onDoubleClick();
         lastTapTime.current = 0; // reset
       } else {
-        // Single tap
         onLeftClick();
         lastTapTime.current = now;
       }
@@ -82,12 +100,7 @@ export function Touchpad({
     if (lastScrollY.current === null) return;
 
     const deltaY = e.clientY - lastScrollY.current;
-    // Accumulate scroll thresholds to feel natural
     if (Math.abs(deltaY) >= 4) {
-      // Send scroll event (we scale it so it moves smoothly on desktop)
-      // Positive deltaY = drag down = scroll down (negative wheel delta in Windows)
-      // Negative deltaY = drag up = scroll up (positive wheel delta in Windows)
-      // We pass the raw value inverted to match standard wheel delta direction
       const scrollAmount = -Math.round(deltaY * 3);
       onScroll(scrollAmount);
       lastScrollY.current = e.clientY;
@@ -98,6 +111,15 @@ export function Touchpad({
     e.currentTarget.releasePointerCapture(e.pointerId);
     lastScrollY.current = null;
   };
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (throttleTimer.current !== null) {
+        clearTimeout(throttleTimer.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="w-full flex flex-col gap-4">
