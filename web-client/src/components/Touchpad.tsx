@@ -6,6 +6,8 @@ interface TouchpadProps {
   onRightClick: () => void;
   onDoubleClick: () => void;
   onScroll: (dy: number) => void;
+  pointerSensitivity: number;
+  scrollSpeed: number;
 }
 
 export function Touchpad({
@@ -13,7 +15,9 @@ export function Touchpad({
   onLeftClick,
   onRightClick,
   onDoubleClick,
-  onScroll
+  onScroll,
+  pointerSensitivity,
+  scrollSpeed
 }: TouchpadProps) {
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const lastScrollY = useRef<number | null>(null);
@@ -40,8 +44,8 @@ export function Touchpad({
   const handleTouchpadMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!lastPos.current) return;
 
-    const dx = Math.round(e.clientX - lastPos.current.x);
-    const dy = Math.round(e.clientY - lastPos.current.y);
+    const dx = Math.round((e.clientX - lastPos.current.x) * pointerSensitivity);
+    const dy = Math.round((e.clientY - lastPos.current.y) * pointerSensitivity);
 
     if (dx !== 0 || dy !== 0) {
       // Accumulate the relative motion
@@ -101,7 +105,7 @@ export function Touchpad({
 
     const deltaY = e.clientY - lastScrollY.current;
     if (Math.abs(deltaY) >= 4) {
-      const scrollAmount = -Math.round(deltaY * 3);
+      const scrollAmount = -Math.round(deltaY * scrollSpeed);
       onScroll(scrollAmount);
       lastScrollY.current = e.clientY;
     }

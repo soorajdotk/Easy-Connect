@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MousePointer, Keyboard, QrCode, Wifi, LogOut } from 'lucide-react';
+import { MousePointer, Keyboard, QrCode, Wifi, LogOut, Settings, X, Sliders } from 'lucide-react';
 import { QRScanner } from './components/QRScanner';
 import { Touchpad } from './components/Touchpad';
 import { VirtualKeyboard } from './components/VirtualKeyboard';
@@ -11,6 +11,15 @@ function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualData, setManualData] = useState('');
+  const [pointerSensitivity, setPointerSensitivity] = useState<number>(() => {
+    const stored = localStorage.getItem('pointer_sensitivity');
+    return stored ? parseFloat(stored) : 1.0;
+  });
+  const [scrollSpeed, setScrollSpeed] = useState<number>(() => {
+    const stored = localStorage.getItem('scroll_speed');
+    return stored ? parseInt(stored, 10) : 3;
+  });
+  const [showSettings, setShowSettings] = useState(false);
   const { connectionStatus, connect, disconnect, sendMessage } = useRemoteConnection();
 
   const handleScan = (data: string) => {
@@ -76,6 +85,13 @@ function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Configure settings"
+            className="p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-slate-800/50 transition-all active:scale-95"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
           {connectionStatus !== 'disconnected' && (
             <button
               onClick={handleForget}
@@ -176,6 +192,8 @@ function App() {
                   onRightClick={() => sendMessage({ type: 'right_click' })}
                   onDoubleClick={() => sendMessage({ type: 'double_click' })}
                   onScroll={(dy) => sendMessage({ type: 'mouse_scroll', dy })}
+                  pointerSensitivity={pointerSensitivity}
+                  scrollSpeed={scrollSpeed}
                 />
               ) : (
                 <VirtualKeyboard
@@ -217,6 +235,88 @@ function App() {
       <footer className="mt-4 text-center">
         <p className="text-[10px] text-slate-600">Universal Remote v1.0.0 • Phase 1</p>
       </footer>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm glass-card rounded-3xl p-6 shadow-2xl border border-slate-800/80 relative flex flex-col gap-6 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-400">
+                <Sliders className="w-5 h-5" />
+                <h2 className="text-sm font-bold text-slate-100">Controls Settings</h2>
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex flex-col gap-5">
+              {/* Pointer Sensitivity Slider */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-300">Pointer Sensitivity</span>
+                  <span className="text-indigo-400 font-mono">{pointerSensitivity.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="3.0"
+                  step="0.1"
+                  value={pointerSensitivity}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setPointerSensitivity(val);
+                    localStorage.setItem('pointer_sensitivity', val.toString());
+                  }}
+                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-900 accent-indigo-500 border border-slate-800 focus:outline-none"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium px-0.5">
+                  <span>Slow (0.2x)</span>
+                  <span>Fast (3.0x)</span>
+                </div>
+              </div>
+
+              {/* Scroll Speed Slider */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-300">Scrolling Speed</span>
+                  <span className="text-indigo-400 font-mono">{scrollSpeed}x {scrollSpeed === 3 && '(Default)'}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={scrollSpeed}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setScrollSpeed(val);
+                    localStorage.setItem('scroll_speed', val.toString());
+                  }}
+                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-slate-900 accent-indigo-500 border border-slate-800 focus:outline-none"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium px-0.5">
+                  <span>Slow (1x)</span>
+                  <span>Fast (10x)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <button
+              onClick={() => setShowSettings(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/20 active:scale-[0.98]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
