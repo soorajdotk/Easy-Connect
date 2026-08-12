@@ -5,21 +5,13 @@ import { Touchpad } from './components/Touchpad';
 import { VirtualKeyboard } from './components/VirtualKeyboard';
 import { useRemoteConnection } from './hooks/useRemoteConnection';
 import type { PairingInfo } from 'shared';
+import { VoiceControl } from './components/VoiceControl';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'touchpad' | 'keyboard'>('touchpad');
   const [isScanning, setIsScanning] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualData, setManualData] = useState('');
-  const [pointerSensitivity, setPointerSensitivity] = useState<number>(() => {
-    const stored = localStorage.getItem('pointer_sensitivity');
-    return stored ? parseFloat(stored) : 1.0;
-  });
-  const [scrollSpeed, setScrollSpeed] = useState<number>(() => {
-    const stored = localStorage.getItem('scroll_speed');
-    return stored ? parseInt(stored, 10) : 3;
-  });
-  const [showSettings, setShowSettings] = useState(false);
   const { connectionStatus, connect, disconnect, sendMessage } = useRemoteConnection();
 
   const handleScan = (data: string) => {
@@ -202,6 +194,13 @@ function App() {
                 />
               )}
             </div>
+
+            {/* Voice Control */}
+            <VoiceControl
+              sendMessage={sendMessage}
+              addMessageListener={addMessageListener}
+              isConnected={connectionStatus === 'connected'}
+            />
 
             {/* Navigation Tabs */}
             <div className="glass rounded-2xl p-1.5 flex gap-2 w-full">

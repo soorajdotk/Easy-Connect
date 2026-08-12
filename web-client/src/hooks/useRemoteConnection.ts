@@ -10,6 +10,14 @@ export function useRemoteConnection() {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectDelayRef = useRef<number>(1000); // Start at 1s
   const intentionalDisconnectRef = useRef<boolean>(false);
+  const messageListeners = useRef<Set<(msg: WsMessage) => void>>(new Set());
+
+  const addMessageListener = useCallback((listener: (msg: WsMessage) => void) => {
+    messageListeners.current.add(listener);
+    return () => {
+      messageListeners.current.delete(listener);
+    };
+  }, []);
 
   // Load pairing details on mount
   useEffect(() => {
@@ -89,6 +97,15 @@ export function useRemoteConnection() {
         console.error('WebSocket connection error:', err);
         // let onclose handle the reconnect logic
       };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg: WsMessage = JSON.parse(event.data);
+          messageListeners.current.forEach((listener) => listener(msg));
+        } catch (e) {
+          console.error('Failed to parse incoming WS message:', e);
+        }
+      };
     } catch (err) {
       console.error('Failed to create WebSocket:', err);
       setConnectionStatus('disconnected');
@@ -122,7 +139,8 @@ export function useRemoteConnection() {
     pairingInfo,
     connect,
     disconnect,
-    sendMessage
+    sendMessage,
+    addMessageListener
   };
 }
 export default useRemoteConnection;

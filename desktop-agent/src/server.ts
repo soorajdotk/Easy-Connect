@@ -14,6 +14,7 @@ import {
   pressSpecialKey,
   releaseAllModifiers
 } from './input';
+import { executeVoiceCommand } from './voiceCommands';
 
 export interface ServerConfig {
   port: number;
@@ -146,6 +147,23 @@ export class RemoteServer {
         break;
       case 'special_key':
         pressSpecialKey(msg.key);
+        break;
+      case 'voice_command':
+        executeVoiceCommand(msg).then((result) => {
+          if (this.activeSocket && this.activeSocket.readyState === WebSocket.OPEN) {
+            this.activeSocket.send(JSON.stringify(result));
+          }
+        }).catch((err) => {
+          console.error('Error executing voice command:', err);
+          const errorResult = {
+            type: 'voice_result' as const,
+            success: false,
+            message: err.message || 'An internal error occurred.'
+          };
+          if (this.activeSocket && this.activeSocket.readyState === WebSocket.OPEN) {
+            this.activeSocket.send(JSON.stringify(errorResult));
+          }
+        });
         break;
     }
   }

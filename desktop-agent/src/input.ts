@@ -169,3 +169,24 @@ export function releaseAllModifiers(): void {
     isShiftPressed = false;
   }
 }
+
+export function pressKeyCombination(keys: string[]): void {
+  const vkCodes: number[] = [];
+  for (const key of keys) {
+    const k = key.toUpperCase().trim();
+    if (k === 'ALT') vkCodes.push(VK_MENU);
+    else if (k === 'CONTROL' || k === 'CTRL') vkCodes.push(VK_CONTROL);
+    else if (k === 'SHIFT') vkCodes.push(VK_SHIFT);
+    else if (k === 'F4') vkCodes.push(0x73);
+  }
+
+  // Press all keys in order
+  for (const vk of vkCodes) {
+    keybd_event(vk, 0, 0, 0);
+  }
+
+  // Release all keys in reverse order
+  for (let i = vkCodes.length - 1; i >= 0; i--) {
+    keybd_event(vkCodes[i], 0, KEYEVENTF_KEYUP, 0);
+  }
+}
