@@ -12,7 +12,24 @@ function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualData, setManualData] = useState('');
-  const { connectionStatus, connect, disconnect, sendMessage } = useRemoteConnection();
+  const [showSettings, setShowSettings] = useState(false);
+
+const [pointerSensitivity, setPointerSensitivity] = useState(() => {
+  const saved = localStorage.getItem('pointer_sensitivity');
+  return saved ? parseFloat(saved) : 1.0;
+});
+
+const [scrollSpeed, setScrollSpeed] = useState(() => {
+  const saved = localStorage.getItem('scroll_speed');
+  return saved ? parseInt(saved, 10) : 3;
+});
+ const {
+  connectionStatus,
+  connect,
+  disconnect,
+  sendMessage,
+  addMessageListener
+} = useRemoteConnection();
 
   const handleScan = (data: string) => {
     try {
